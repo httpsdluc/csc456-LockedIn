@@ -1,0 +1,5 @@
+[
+  { "id": 1, "name": "Oatmeal with banana", "mealType": "breakfast", "calories": 350, "proteinG": 12, "carbsG": 60, "fatG": 7, "eatenAt": "2026-10-26T08:00:00Z" },
+  { "id": 2, "name": "Chicken rice bowl", "mealType": "lunch", "calories": 620, "proteinG": 45, "carbsG": 70, "fatG": 15, "eatenAt": "2026-10-26T12:30:00Z" },
+  { "id": 3, "name": "Protein shake", "mealType": "snack", "calories": 180, "proteinG": 30, "carbsG": 6, "fatG": 3, "eatenAt": "2026-10-26T15:00:00Z" }
+]
