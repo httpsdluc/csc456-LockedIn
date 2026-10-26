@@ -9,6 +9,7 @@
     "pass-rate": "node scripts/pass-rate.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.1"
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5"
   }
 }
