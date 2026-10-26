@@ -1,0 +1,7 @@
+export type Item = { id: number; title: string; createdAt: string };
+
+export const items: Item[] = [
+  { id: 1, title: "First item", createdAt: "2026-10-26T12:00:00Z" },
+  { id: 2, title: "Second item", createdAt: "2026-10-26T12:05:00Z" },
+  { id: 3, title: "Third item", createdAt: "2026-10-26T12:10:00Z" },
+];
