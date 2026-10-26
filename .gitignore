@@ -29,3 +29,6 @@ coverage/
 .next/
 playwright-report/
 test-results/
+
+# Playwright pass-rate output
+e2e/results/
