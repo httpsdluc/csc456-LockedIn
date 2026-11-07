@@ -7,6 +7,7 @@ import {
   meals as sampleMeals,
   type DailySummary,
   type Meal,
+  type MealType,
 } from "@/lib/fixtures";
 import {
   createMeal,
@@ -28,7 +29,53 @@ type Mode = "demo" | "loading" | "live" | "offline";
 const nextId = (meals: Meal[]) =>
   meals.reduce((max, meal) => Math.max(max, meal.id), 0) + 1;
 
-const cardClass = "mb-8 rounded-xl border border-gray-700 bg-gray-900 p-6";
+// Each macro keeps its colour everywhere it appears (bar, legend).
+const MACROS = [
+  { key: "proteinG", label: "Protein", kcalPerGram: 4, color: "#FF7A8A", testId: "stat-protein" },
+  { key: "carbsG", label: "Carbs", kcalPerGram: 4, color: "#FFC15E", testId: "stat-carbs" },
+  { key: "fatG", label: "Fat", kcalPerGram: 9, color: "#4FD1C5", testId: "stat-fat" },
+] as const;
+
+const MEAL_TYPE_STYLE: Record<MealType, string> = {
+  breakfast: "bg-[#3A2F12] text-[#FFD889]",
+  lunch: "bg-[#123634] text-[#7FE3D8]",
+  dinner: "bg-[#2D2766] text-[#C7BEFF]",
+  snack: "bg-[#3D1A26] text-[#FF9DB0]",
+};
+
+const RING_RADIUS = 52;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+
+function ProgressRing({ progress, overGoal }: { progress: number; overGoal: boolean }) {
+  return (
+    <div className="relative mx-auto h-48 w-48 shrink-0">
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="60" cy="60" r={RING_RADIUS} fill="none" stroke="#3A3670" strokeWidth="10" />
+        <circle
+          cx="60"
+          cy="60"
+          r={RING_RADIUS}
+          fill="none"
+          stroke={overGoal ? "#FF7A7A" : "#8B7CFF"}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={RING_LENGTH}
+          strokeDashoffset={RING_LENGTH * (1 - progress / 100)}
+          className="transition-[stroke-dashoffset] duration-700 ease-out motion-reduce:transition-none"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span
+          data-testid="stat-progress"
+          className="text-5xl font-extrabold tabular-nums [font-family:var(--font-display)]"
+        >
+          {progress.toFixed(0)}%
+        </span>
+        <span className="mt-1 text-sm text-[#B9B6DA]">of daily goal</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [apiUrl] = useState(getApiUrl);
@@ -98,7 +145,7 @@ export default function Dashboard() {
 
   if (mode === "loading") {
     return (
-      <p role="status" data-testid="data-status" className="text-gray-300">
+      <p role="status" data-testid="data-status" className="text-[#A9A7C9]">
         Loading today&apos;s meals…
       </p>
     );
@@ -111,13 +158,16 @@ export default function Dashboard() {
       : 0;
   const overGoal = summary.remainingCalories < 0;
 
+  const macroCalories = MACROS.map((macro) => summary[macro.key] * macro.kcalPerGram);
+  const macroTotal = macroCalories.reduce((sum, value) => sum + value, 0);
+
   return (
     <>
       {mode === "demo" && (
         <p
           role="status"
           data-testid="data-status"
-          className="mb-6 rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-300"
+          className="mb-6 text-sm text-[#A9A7C9]"
         >
           Demo mode: showing sample meals. Changes are not saved.
         </p>
@@ -127,7 +177,7 @@ export default function Dashboard() {
         <p
           role="status"
           data-testid="data-status"
-          className="mb-6 rounded-lg border border-yellow-700 bg-yellow-950 px-4 py-3 text-sm text-yellow-200"
+          className="mb-6 rounded-xl bg-[#3A2F12] px-4 py-3 text-sm text-[#FFD889]"
         >
           Could not reach the server, so you are seeing sample meals. Changes
           are not saved.
@@ -135,127 +185,176 @@ export default function Dashboard() {
       )}
 
       {/* Daily Summary */}
-      <section className={cardClass}>
-        <h2 className="mb-6 text-2xl font-semibold">Daily Nutrition Summary</h2>
+      <section
+        aria-labelledby="summary-heading"
+        className="mb-6 rounded-[28px] bg-[#23204A] p-6 ring-1 ring-[#3A3670] sm:p-8"
+      >
+        <h2
+          id="summary-heading"
+          className="mb-6 text-xl font-semibold [font-family:var(--font-display)]"
+        >
+          Daily Nutrition Summary
+        </h2>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-gray-800 p-5">
-            <p className="text-sm text-gray-400">Calories Consumed</p>
-            <p
-              data-testid="stat-calories-consumed"
-              className="mt-2 text-3xl font-bold text-green-400"
-            >
-              {summary.calories}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-gray-800 p-5">
-            <p className="text-sm text-gray-400">Daily Goal</p>
-            <p data-testid="stat-daily-goal" className="mt-2 text-3xl font-bold">
-              {summary.goalCalories}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-gray-800 p-5">
-            <p className="text-sm text-gray-400">Remaining Calories</p>
-            <p
-              data-testid="stat-remaining-calories"
-              className={`mt-2 text-3xl font-bold ${overGoal ? "text-red-400" : "text-green-400"}`}
-            >
-              {summary.remainingCalories}
-            </p>
-          </div>
-        </div>
-
-        {/* Calorie Progress */}
-        <div className="mt-6">
-          <div className="mb-2 flex justify-between text-sm">
-            <span>Daily Progress</span>
-            <span data-testid="stat-progress">{progress.toFixed(0)}%</span>
-          </div>
-
-          <div className="h-3 rounded-full bg-gray-700">
-            <div
-              className="h-3 rounded-full bg-green-400"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Macronutrients */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div>
-            <p className="text-gray-400">Protein</p>
-            <p data-testid="stat-protein" className="text-xl font-semibold">
-              {summary.proteinG} g
-            </p>
-          </div>
+        <div className="grid items-center gap-8 md:grid-cols-[auto_1fr] md:gap-12">
+          <ProgressRing progress={progress} overGoal={overGoal} />
 
           <div>
-            <p className="text-gray-400">Carbs</p>
-            <p data-testid="stat-carbs" className="text-xl font-semibold">
-              {summary.carbsG} g
-            </p>
-          </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-[#B9B6DA]">Calories Consumed</p>
+                <p
+                  data-testid="stat-calories-consumed"
+                  className="mt-1 text-3xl font-extrabold tabular-nums [font-family:var(--font-display)]"
+                >
+                  {summary.calories}
+                </p>
+              </div>
 
-          <div>
-            <p className="text-gray-400">Fat</p>
-            <p data-testid="stat-fat" className="text-xl font-semibold">
-              {summary.fatG} g
-            </p>
-          </div>
-        </div>
-      </section>
+              <div>
+                <p className="text-sm text-[#B9B6DA]">Daily Goal</p>
+                <p
+                  data-testid="stat-daily-goal"
+                  className="mt-1 text-3xl font-extrabold tabular-nums text-[#B9B6DA] [font-family:var(--font-display)]"
+                >
+                  {summary.goalCalories}
+                </p>
+              </div>
 
-      {/* Log a Meal */}
-      <section className={cardClass}>
-        <h2 className="mb-5 text-2xl font-semibold">Log a Meal</h2>
-        <MealForm onSubmit={handleAdd} />
-      </section>
+              <div>
+                <p className="text-sm text-[#B9B6DA]">Remaining Calories</p>
+                <p
+                  data-testid="stat-remaining-calories"
+                  data-over-goal={overGoal}
+                  className={`mt-1 text-3xl font-extrabold tabular-nums [font-family:var(--font-display)] ${
+                    overGoal ? "text-[#FF7A7A]" : "text-[#8B7CFF]"
+                  }`}
+                >
+                  {summary.remainingCalories}
+                </p>
+              </div>
+            </div>
 
-      {/* Today's Meals */}
-      <section className="rounded-xl border border-gray-700 bg-gray-900 p-6">
-        <h2 className="mb-5 text-2xl font-semibold">Today&apos;s Meals</h2>
-
-        {actionError && (
-          <p role="alert" data-testid="meal-list-error" className="mb-4 text-sm text-red-400">
-            {actionError}
-          </p>
-        )}
-
-        {meals.length === 0 ? (
-          <p data-testid="meal-list-empty" className="text-gray-400">
-            No meals logged yet today.
-          </p>
-        ) : (
-          <ul className="space-y-3" data-testid="meal-list">
-            {meals.map((meal) => (
-              <li
-                key={meal.id}
-                data-testid="meal-item"
-                className="flex items-center justify-between gap-4 rounded-lg bg-gray-800 p-4"
+            {/* Macronutrients: where today's calories came from */}
+            <div className="mt-8">
+              <div
+                className="flex h-3 overflow-hidden rounded-full bg-[#3A3670]"
+                aria-hidden="true"
               >
-                <div>
-                  <h3 className="font-semibold">{meal.name}</h3>
-                  <p className="text-sm capitalize text-gray-400">{meal.mealType}</p>
-                </div>
+                {macroTotal > 0 &&
+                  MACROS.map((macro, index) => (
+                    <div
+                      key={macro.key}
+                      style={{
+                        width: `${(macroCalories[index] / macroTotal) * 100}%`,
+                        backgroundColor: macro.color,
+                      }}
+                    />
+                  ))}
+              </div>
 
-                <div className="flex items-center gap-4">
-                  <p className="font-semibold text-green-400">{meal.calories} kcal</p>
-                  <button
-                    type="button"
-                    aria-label={`Delete ${meal.name}`}
-                    onClick={() => handleDelete(meal.id)}
-                    className="rounded-md px-2 py-1 text-sm text-gray-400 hover:bg-gray-700 hover:text-red-400"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+              <div className="mt-4 grid grid-cols-3 gap-4">
+                {MACROS.map((macro) => (
+                  <div key={macro.key}>
+                    <p className="flex items-center gap-2 text-sm text-[#B9B6DA]">
+                      <span
+                        aria-hidden="true"
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: macro.color }}
+                      />
+                      {macro.label}
+                    </p>
+                    <p data-testid={macro.testId} className="mt-1 text-lg font-semibold tabular-nums">
+                      {summary[macro.key]} g
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start">
+        {/* Log a Meal */}
+        <section
+          aria-labelledby="log-heading"
+          className="rounded-[28px] bg-[#1B1A36] p-6 ring-1 ring-[#2E2B57] sm:p-8"
+        >
+          <h2
+            id="log-heading"
+            className="mb-5 text-xl font-semibold [font-family:var(--font-display)]"
+          >
+            Log a Meal
+          </h2>
+          <MealForm onSubmit={handleAdd} />
+        </section>
+
+        {/* Today's Meals */}
+        <section
+          aria-labelledby="meals-heading"
+          className="rounded-[28px] bg-[#1B1A36] p-6 ring-1 ring-[#2E2B57] sm:p-8"
+        >
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2
+              id="meals-heading"
+              className="text-xl font-semibold [font-family:var(--font-display)]"
+            >
+              Today&apos;s Meals
+            </h2>
+            <span className="text-sm text-[#A9A7C9]">
+              {meals.length} {meals.length === 1 ? "meal" : "meals"}
+            </span>
+          </div>
+
+          {actionError && (
+            <p
+              role="alert"
+              data-testid="meal-list-error"
+              className="mb-3 rounded-xl bg-[#3D1A26] px-4 py-3 text-sm text-[#FF9DB0]"
+            >
+              {actionError}
+            </p>
+          )}
+
+          {meals.length === 0 ? (
+            <p data-testid="meal-list-empty" className="py-8 text-center text-[#A9A7C9]">
+              No meals logged yet today. Add one with the form to start your day&apos;s total.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[#2E2B57]" data-testid="meal-list">
+              {meals.map((meal) => (
+                <li
+                  key={meal.id}
+                  data-testid="meal-item"
+                  className="flex items-center justify-between gap-4 py-4"
+                >
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold">{meal.name}</h3>
+                    <p
+                      className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${MEAL_TYPE_STYLE[meal.mealType]}`}
+                    >
+                      {meal.mealType}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    <p className="font-semibold tabular-nums">{meal.calories} kcal</p>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${meal.name}`}
+                      onClick={() => handleDelete(meal.id)}
+                      className="rounded-lg px-2 py-1 text-sm text-[#A9A7C9] hover:bg-[#3D1A26] hover:text-[#FF9DB0] focus-visible:outline-2 focus-visible:outline-[#8B7CFF]"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </>
   );
 }

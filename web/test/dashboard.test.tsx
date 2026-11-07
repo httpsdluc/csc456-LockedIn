@@ -51,12 +51,14 @@ describe("dashboard in demo mode (no API configured)", () => {
     expect(stat("progress")).toHaveTextContent("54%");
   });
 
-  it("shows remaining calories in red once over the goal", async () => {
+  it("flags remaining calories once over the goal", async () => {
     render(<Home />);
+    expect(stat("remaining-calories")).toHaveAttribute("data-over-goal", "false");
+
     logMeal("Big feast", "2000");
 
     await waitFor(() => expect(stat("remaining-calories")).toHaveTextContent("-650"));
-    expect(stat("remaining-calories")).toHaveClass("text-red-400");
+    expect(stat("remaining-calories")).toHaveAttribute("data-over-goal", "true");
     expect(stat("progress")).toHaveTextContent("100%");
   });
 

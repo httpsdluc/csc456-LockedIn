@@ -51,7 +51,9 @@ type MealFormProps = {
 };
 
 const inputClass =
-  "mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-green-400 focus:outline-none";
+  "mt-1.5 w-full rounded-xl border border-[#2E2B57] bg-[#13122B] px-3.5 py-2.5 text-[#F1F0FA] placeholder:text-[#6F6C99] focus:border-[#8B7CFF] focus:outline-none focus:ring-4 focus:ring-[#8B7CFF]/20";
+
+const labelClass = "text-sm font-medium text-[#B9B6DA]";
 
 export default function MealForm({ onSubmit }: MealFormProps) {
   const [values, setValues] = useState<MealFormValues>(EMPTY_VALUES);
@@ -93,7 +95,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
       className="space-y-4"
     >
       <div>
-        <label htmlFor="meal-name" className="text-sm text-gray-400">
+        <label htmlFor="meal-name" className={labelClass}>
           Meal name
         </label>
         <input
@@ -109,7 +111,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="meal-type" className="text-sm text-gray-400">
+          <label htmlFor="meal-type" className={labelClass}>
             Meal type
           </label>
           <select
@@ -128,7 +130,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
         </div>
 
         <div>
-          <label htmlFor="meal-calories" className="text-sm text-gray-400">
+          <label htmlFor="meal-calories" className={labelClass}>
             Calories
           </label>
           <input
@@ -146,7 +148,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-3">
         {(
           [
             ["proteinG", "Protein (g)", "meal-protein"],
@@ -155,7 +157,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
           ] as const
         ).map(([field, label, id]) => (
           <div key={field}>
-            <label htmlFor={id} className="text-sm text-gray-400">
+            <label htmlFor={id} className={labelClass}>
               {label}
             </label>
             <input
@@ -175,7 +177,11 @@ export default function MealForm({ onSubmit }: MealFormProps) {
       </div>
 
       {error && (
-        <p role="alert" data-testid="meal-form-error" className="text-sm text-red-400">
+        <p
+          role="alert"
+          data-testid="meal-form-error"
+          className="rounded-xl bg-[#3D1A26] px-4 py-3 text-sm text-[#FF9DB0]"
+        >
           {error}
         </p>
       )}
@@ -184,7 +190,7 @@ export default function MealForm({ onSubmit }: MealFormProps) {
         type="submit"
         data-testid="meal-submit"
         disabled={submitting}
-        className="rounded-lg bg-green-500 px-5 py-2 font-semibold text-gray-950 hover:bg-green-400 disabled:opacity-60"
+        className="w-full rounded-xl bg-[#8B7CFF] px-5 py-3 font-semibold text-[#13122B] hover:bg-[#A397FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8B7CFF] disabled:opacity-60 sm:w-auto"
       >
         {submitting ? "Saving…" : "Add meal"}
       </button>
