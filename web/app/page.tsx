@@ -1,137 +1,49 @@
-import { dailySummary, meals } from "@/lib/fixtures";
+import type { CSSProperties } from "react";
+import Dashboard from "@/components/Dashboard";
+
+// Bricolage Grotesque for the wordmark, headings and big numbers;
+// Figtree for everything else.
+const fonts = {
+  "--font-display": "'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif",
+  fontFamily: "'Figtree', ui-sans-serif, system-ui, sans-serif",
+} as CSSProperties;
 
 export default function Home() {
-  const progress =
-    dailySummary.goalCalories > 0
-      ? Math.min(
-          (dailySummary.calories / dailySummary.goalCalories) * 100,
-          100
-        )
-      : 0;
-
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+    <main className="min-h-screen bg-[#13122B] text-[#F1F0FA] [color-scheme:dark]" style={fonts}>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"
+      />
 
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Header */}
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold text-green-400">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <h1 className="flex items-center gap-2 text-4xl font-extrabold tracking-tight [font-family:var(--font-display)]">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-8 w-8 text-[#8B7CFF]"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="4" y="10.5" width="16" height="11" rx="3" />
+              <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+              <path d="M9 16l2 2 4-4" />
+            </svg>
             LockedIn
           </h1>
 
-          <p className="mt-3 text-gray-300">
-            Your AI-powered health and fitness tracker
-          </p>
+          <p className="text-[#A9A7C9]">Your AI-powered health and fitness tracker</p>
         </header>
 
-        {/* Welcome Section */}
-        <section className="mb-8 rounded-xl border border-gray-700 bg-gray-900 p-6">
-          <h2 className="text-2xl font-semibold">
-            Welcome to LockedIn
-          </h2>
-
-          <p className="mt-3 text-gray-300">
-            Track your meals, monitor your daily calories,
-            and stay consistent with your fitness goals.
-          </p>
-        </section>
-
-        {/* Daily Summary */}
-        <section className="mb-8 rounded-xl border border-gray-700 bg-gray-900 p-6">
-          <h2 className="mb-6 text-2xl font-semibold">
-            Daily Nutrition Summary
-          </h2>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-lg bg-gray-800 p-5">
-              <p className="text-sm text-gray-400">Calories Consumed</p>
-              <p className="mt-2 text-3xl font-bold text-green-400">
-                {dailySummary.calories}
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-gray-800 p-5">
-              <p className="text-sm text-gray-400">Daily Goal</p>
-              <p className="mt-2 text-3xl font-bold">
-                {dailySummary.goalCalories}
-              </p>
-            </div>
-
-            <div className="rounded-lg bg-gray-800 p-5">
-              <p className="text-sm text-gray-400">Remaining Calories</p>
-              <p className="mt-2 text-3xl font-bold text-green-400">
-                {dailySummary.remainingCalories}
-              </p>
-            </div>
-          </div>
-
-          {/* Calorie Progress */}
-          <div className="mt-6">
-            <div className="mb-2 flex justify-between text-sm">
-              <span>Daily Progress</span>
-              <span>{progress.toFixed(0)}%</span>
-            </div>
-
-            <div className="h-3 rounded-full bg-gray-700">
-              <div
-                className="h-3 rounded-full bg-green-400"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Macronutrients */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <div>
-              <p className="text-gray-400">Protein</p>
-              <p className="text-xl font-semibold">
-                {dailySummary.proteinG} g
-              </p>
-            </div>
-
-            <div>
-              <p className="text-gray-400">Carbs</p>
-              <p className="text-xl font-semibold">
-                {dailySummary.carbsG} g
-              </p>
-            </div>
-
-            <div>
-              <p className="text-gray-400">Fat</p>
-              <p className="text-xl font-semibold">
-                {dailySummary.fatG} g
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Sample Meals */}
-        <section className="rounded-xl border border-gray-700 bg-gray-900 p-6">
-          <h2 className="mb-5 text-2xl font-semibold">
-            Today's Meals
-          </h2>
-
-          <div className="space-y-3">
-            {meals.map((meal) => (
-              <div
-                key={meal.id}
-                className="flex items-center justify-between rounded-lg bg-gray-800 p-4"
-              >
-                <div>
-                  <h3 className="font-semibold">{meal.name}</h3>
-                  <p className="text-sm capitalize text-gray-400">
-                    {meal.mealType}
-                  </p>
-                </div>
-
-                <p className="font-semibold text-green-400">
-                  {meal.calories} kcal
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
+        {/* Summary, meal form and meal list */}
+        <Dashboard />
       </div>
     </main>
   );
