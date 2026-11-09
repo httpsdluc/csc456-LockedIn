@@ -1,0 +1,10 @@
+{
+  "passed": 20,
+  "failed": 0,
+  "flaky": 0,
+  "skipped": 0,
+  "run": 20,
+  "passRate": 100,
+  "errors": 0,
+  "durationMs": 11358.866
+}
