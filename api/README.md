@@ -71,4 +71,5 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 Live at **https://csc456-lockedin.onrender.com** (try `/health`). Hosted on Render's free plan, set up by [`render.yaml`](../render.yaml) at the repo root. Every merge to `main` redeploys automatically, and Render checks `/health` before switching traffic to the new version.
 
 - The free plan sleeps after about 15 minutes with no requests, and the first request after that takes 30 to 60 seconds. The uptime monitor (#16) pings `/health` often enough to keep it awake.
+- Uptime and response times: [status page](https://stats.uptimerobot.com/duQAuQ575n) (UptimeRobot checks every 5 minutes).
 - To see which commit is live: `curl <api-url>/health` and compare `version` to `git log`.
