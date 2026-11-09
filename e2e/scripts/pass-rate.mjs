@@ -27,12 +27,18 @@ report.suites.forEach(walk);
 
 const run = counts.passed + counts.failed + counts.flaky;
 const passRate = run === 0 ? 0 : Math.round((counts.passed / run) * 1000) / 10;
-const result = { ...counts, run, passRate, durationMs: report.stats?.duration ?? null };
+const errors = report.errors?.length ?? 0;
+const result = { ...counts, run, passRate, errors, durationMs: report.stats?.duration ?? null };
 
 writeFileSync("results/pass-rate.json", JSON.stringify(result, null, 2) + "\n");
-const line = `UI tests: ${counts.passed}/${run} passed (${passRate}%), ${counts.flaky} flaky, ${counts.skipped} skipped`;
+const line = `UI tests: ${counts.passed}/${run} passed (${passRate}%), ${counts.flaky} flaky, ${counts.skipped} skipped, ${errors} run errors`;
 console.log(line);
 
 if (process.env.GITHUB_STEP_SUMMARY) {
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### ${line}\n`);
+}
+
+// Publish the report first, but never let an incomplete or failing run look green.
+if (run === 0 || counts.failed || counts.flaky || counts.skipped || errors) {
+  process.exitCode = 1;
 }

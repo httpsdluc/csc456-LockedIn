@@ -45,10 +45,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for web app
+      - name: Require web app
         id: check
         run: |
-          if [ -f web/package.json ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "No web app yet, skipping UI tests."; fi
+          test -f web/package.json || { echo "Web app missing. Merge the frontend before running UI tests."; exit 1; }
+          echo "exists=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         if: steps.check.outputs.exists == 'true'
@@ -58,6 +59,8 @@ jobs:
       - name: Install and build web
         if: steps.check.outputs.exists == 'true'
         working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: ""
         run: |
           npm ci || npm install
           npm run build

@@ -11,6 +11,7 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  failOnFlakyTests: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: [
     ["list"],
@@ -34,6 +35,7 @@ export default defineConfig({
           ? `npm --prefix ${webDir} run start -- --port ${localPort}`
           : `npm --prefix ${webDir} run dev -- --port ${localPort}`,
         url: baseURL,
+        env: { NEXT_PUBLIC_API_URL: "" },
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },
