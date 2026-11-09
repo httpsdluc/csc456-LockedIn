@@ -2,7 +2,8 @@
 # Deploys the Express API from api/ on every push to main.
 services:
   - type: web
-    name: lockedin-api
+    # Matches the service created in the Render dashboard (csc456-lockedin.onrender.com).
+    name: csc456-LockedIn
     runtime: node
     plan: free
     rootDir: api
