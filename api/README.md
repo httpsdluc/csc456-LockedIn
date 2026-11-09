@@ -44,7 +44,7 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 | Name | Default | What |
 |---|---|---|
 | `PORT` | `3001` | Port to listen on. 3001 so it doesn't clash with Next.js on 3000. |
-| `GIT_SHA` | `dev` | Commit being run. `/health` reports the first 7 characters so we can tell which deploy is live. |
+| `GIT_SHA` | `dev` | Commit being run. `/health` reports the first 7 characters so we can tell which deploy is live. On Render this falls back to `RENDER_GIT_COMMIT`, so it doesn't need setting. |
 | `CORS_ORIGIN` | `*` | The web app's URL once it's deployed. Lock this down before real users. |
 | `SEED_FIXTURES` | `true` | Set to `false` to start with no meals. |
 
@@ -65,3 +65,11 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 - **Days are UTC.** A meal at 9pm in New York lands on the next day's list. Fix when user profiles add a timezone.
 - **One demo user, no auth.** Same as CONTRACT.md.
 - **`goalCalories` is hardcoded to 2500** until profiles exist.
+
+## Deploy
+
+Live at **https://csc456-lockedin.onrender.com** (try `/health`). Hosted on Render's free plan, set up by [`render.yaml`](../render.yaml) at the repo root. Every merge to `main` redeploys automatically, and Render checks `/health` before switching traffic to the new version.
+
+- The free plan sleeps after about 15 minutes with no requests, and the first request after that takes 30 to 60 seconds. The uptime monitor (#16) pings `/health` often enough to keep it awake.
+- Uptime and response times: [status page](https://stats.uptimerobot.com/duQAuQ575n) (UptimeRobot checks every 5 minutes).
+- To see which commit is live: `curl <api-url>/health` and compare `version` to `git log`.

@@ -1,0 +1,23 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploys the Express API from api/ on every push to main.
+services:
+  - type: web
+    # Matches the service created in the Render dashboard (csc456-lockedin.onrender.com).
+    name: csc456-LockedIn
+    runtime: node
+    plan: free
+    rootDir: api
+    branch: main
+    autoDeploy: true
+    # --include=dev because the TypeScript compiler is a dev dependency.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Lock this to the web app's URL once it's deployed (#15).
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: SEED_FIXTURES
+        value: "true"

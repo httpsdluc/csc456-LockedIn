@@ -8,7 +8,8 @@ const seed = process.env.SEED_FIXTURES === "false" ? [] : loadFixtureMeals();
 
 const app = createApp({
   store: new MemoryMealStore(seed),
-  version: process.env.GIT_SHA?.slice(0, 7) ?? "dev",
+  // Render sets RENDER_GIT_COMMIT on every deploy; GIT_SHA wins if set by hand.
+  version: (process.env.GIT_SHA ?? process.env.RENDER_GIT_COMMIT)?.slice(0, 7) ?? "dev",
   corsOrigin: process.env.CORS_ORIGIN,
 });
 
