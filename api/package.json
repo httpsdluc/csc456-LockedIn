@@ -11,7 +11,8 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit && vitest run --coverage",
+    "test": "npm run test:coverage",
+    "test:coverage": "tsc --noEmit && vitest run --coverage",
     "test:watch": "vitest"
   },
   "dependencies": {
