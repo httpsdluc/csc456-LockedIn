@@ -2,9 +2,9 @@
 
 <!-- One or two sentences. -->
 
-## Jira ticket
+## Issue
 
-<!-- Link, e.g. https://<team>.atlassian.net/browse/LI-12 -->
+Closes #<!-- issue number from the project board -->
 
 ## How to test
 
