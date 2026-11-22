@@ -35,7 +35,8 @@ coverage comments is handled separately from test execution, as described below.
   components, and library logic, excluding static fixtures. The root layout is
   framework/font wiring and is outside this coverage scope.
 
-Put API tests in `api/test/*.test.ts` and frontend tests in
+Put API unit tests in `api/test/*.test.ts`, API integration tests in
+`api/test/integration/**/*.test.ts`, and frontend tests in
 `web/test/*.test.ts` or `web/test/*.test.tsx`. Test observable behavior and error
 cases, and keep mocks isolated between tests. Browser UI tests are maintained
 separately in `e2e/` under SCRUM-35.
@@ -71,3 +72,49 @@ After merging, verify on a PR that the displayed values match the two downloaded
 coverage artifacts, then push another commit and confirm the same comment is
 updated. A failing run or missing report should be identified clearly. Confirm
 fork behavior on a fork PR after any required maintainer approval for CI.
+
+## API integration tests and pass rate (SCRUM-34)
+
+The Supertest integration tests exercise Express routes, request validation,
+meal storage, daily summaries, and HTTP error handling together. Each test gets
+a fresh in-memory store and a fixed clock. They do not connect to a real database
+or production service; database integration requires separate tests when that
+adapter is introduced.
+
+From the repository root:
+
+```bash
+# Run only the integration tests, then calculate their pass rate.
+npm --prefix api run test:integration
+npm --prefix api run integration:pass-rate
+
+# Run unit and integration tests once, with combined API coverage.
+npm --prefix api test
+npm --prefix api run integration:pass-rate
+
+# Test the reporter itself (no dependency installation needed).
+node --test api/scripts/integration-pass-rate.test.mjs
+```
+
+Vitest writes `api/test-results/tests.json`. The reporter selects only test files
+under `test/integration/`; unit tests never contribute to the integration count.
+It writes `api/test-results/integration-pass-rate.json` and, in GitHub Actions,
+appends a table to the API job summary. Reports are ignored by Git using the
+existing `test-results/` rule. One-shot test commands clear old reports before
+typechecking so a startup failure cannot reuse a previous successful result.
+
+Pass rate is `passed / total discovered integration assertions * 100`, rounded
+to two decimal places. Failed, skipped, disabled, pending, and todo tests remain
+in the denominator. Duration is the sum of integration file durations, not wall
+time for the full API run (files may run in parallel). Incomplete file collection
+or zero tests produces an unavailable percentage instead of a misleading 100%.
+
+CI runs the complete API suite **once**, preserving combined coverage reports
+and SCRUM-33 comments. Reporting and report upload use `always()` so failures do
+not hide results. Artifacts are named `api-integration-results` and retained for
+14 days. Missing/malformed reports, missing files, zero tests, skips, failed
+tests, or a failed API test step cause reporting to fail. CI passes the original
+test step outcome to catch runner and coverage errors that Vitest JSON alone
+may not reflect. Locally, always check the test command's exit code as well as
+the reporting command. A 100% integration pass rate does not override a unit-test,
+coverage, or build failure elsewhere in the API job.

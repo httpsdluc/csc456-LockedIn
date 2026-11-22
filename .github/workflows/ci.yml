@@ -18,6 +18,8 @@ jobs:
           node-version: 20
       - name: Test coverage comment reporting
         run: node --test .github/scripts/post-coverage.test.cjs
+      - name: Test integration pass-rate reporting
+        run: node --test api/scripts/integration-pass-rate.test.mjs
 
   test:
     runs-on: ubuntu-latest
@@ -46,8 +48,25 @@ jobs:
         run: npm ci || npm install
 
       - name: Test
+        id: tests
         if: steps.check.outputs.exists == 'true'
         run: npm test --if-present
+
+      - name: Integration test pass rate
+        if: always() && matrix.package == 'api'
+        env:
+          API_TEST_OUTCOME: ${{ steps.tests.outcome }}
+        run: npm run integration:pass-rate
+
+      - name: Upload integration test reports
+        if: always() && matrix.package == 'api'
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-integration-results
+          path: api/test-results/
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14
 
       - name: Upload coverage summary
         if: always()

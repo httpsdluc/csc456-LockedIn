@@ -12,8 +12,10 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:coverage",
-    "test:coverage": "tsc --noEmit && vitest run --coverage",
-    "test:integration": "tsc --noEmit && vitest run test/integration",
+    "test:clean-reports": "node -e \"for (const name of ['tests.json', 'integration-pass-rate.json']) require('node:fs').rmSync('test-results/' + name, { force: true })\"",
+    "test:coverage": "npm run test:clean-reports && tsc --noEmit && vitest run --coverage",
+    "test:integration": "npm run test:clean-reports && tsc --noEmit && vitest run test/integration",
+    "integration:pass-rate": "node scripts/integration-pass-rate.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {
