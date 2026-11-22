@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { MemoryMealStore } from "../src/store.js";
-import { buildApp } from "./helpers.js";
+import { MemoryMealStore } from "../../src/store.js";
+import { buildApp } from "../helpers.js";
 
 describe("GET /meals", () => {
   it("returns the CONTRACT.md example meal first for 2026-10-26", async () => {
