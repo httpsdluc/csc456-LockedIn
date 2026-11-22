@@ -90,3 +90,15 @@ jobs:
           path: |
             e2e/results/
             e2e/playwright-report/
+
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Metrics script tests
+        run: python -m unittest discover -v scripts/metrics
