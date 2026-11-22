@@ -5,7 +5,20 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
+  coverage-reporter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test coverage comment reporting
+        run: node --test .github/scripts/post-coverage.test.cjs
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -35,6 +48,16 @@ jobs:
       - name: Test
         if: steps.check.outputs.exists == 'true'
         run: npm test --if-present
+
+      - name: Upload coverage summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.package }}
+          path: ${{ matrix.package }}/coverage/coverage-summary.json
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14
 
       - name: Build
         if: steps.check.outputs.exists == 'true'

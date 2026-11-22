@@ -20,9 +20,8 @@ below 80%. Reports are written relative to each package:
 - `coverage/index.html`: interactive report showing uncovered code.
 - `coverage/coverage-summary.json`: percentages for automated consumers.
 
-The existing API/web CI matrix runs `npm test`, so these thresholds apply there
-without changing the workflow shared with the Playwright PR. Posting coverage
-comments on PRs belongs to SCRUM-33; this setup generates the reports.
+The API/web CI matrix runs `npm test`, enforcing these thresholds. Publishing
+coverage comments is handled separately from test execution, as described below.
 
 ## Test scope
 
@@ -40,3 +39,35 @@ Put API tests in `api/test/*.test.ts` and frontend tests in
 `web/test/*.test.ts` or `web/test/*.test.tsx`. Test observable behavior and error
 cases, and keep mocks isolated between tests. Browser UI tests are maintained
 separately in `e2e/` under SCRUM-35.
+
+## PR coverage comments (SCRUM-33)
+
+CI uploads each package's JSON summary as `coverage-api` or `coverage-web`, even
+when tests fail. The `PR coverage comment` workflow runs after CI finishes and
+creates or updates one bot comment with statements, branches, functions, and
+lines for both packages, plus the commit and a link to the CI run. Missing or
+invalid reports are marked **Unavailable**, never silently reported as 0%.
+Percentages are informational; failing tests and coverage thresholds still fail CI.
+
+The publisher uses `workflow_run`, reads reporting code only from the default
+branch, and never installs or executes PR code or artifact contents. PR CI has a
+read-only token; only the separate publisher has permission to comment. PR
+identity comes from GitHub's API, not a file supplied by a PR. Reports for older
+commits, closed PRs, or superseded run attempts do not replace the current comment.
+Fork PRs are supported through commit-to-PR lookup when the run has no PR metadata.
+
+GitHub only triggers `workflow_run` workflows once they exist on the default
+branch. Therefore, the first coverage comment will appear after this reporting
+setup is merged into `main` and a PR's CI runs again. Rerun CI (not just the
+publisher) to generate fresh artifacts. Reports are retained for 14 days.
+
+Run the publisher's local tests without installing dependencies:
+
+```bash
+node --test .github/scripts/post-coverage.test.cjs
+```
+
+After merging, verify on a PR that the displayed values match the two downloaded
+coverage artifacts, then push another commit and confirm the same comment is
+updated. A failing run or missing report should be identified clearly. Confirm
+fork behavior on a fork PR after any required maintainer approval for CI.
