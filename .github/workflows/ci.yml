@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [api, web, e2e]
+        package: [api, web]
     defaults:
       run:
         working-directory: ${{ matrix.package }}
@@ -39,3 +39,54 @@ jobs:
       - name: Build
         if: steps.check.outputs.exists == 'true'
         run: npm run build --if-present
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require web app
+        id: check
+        run: |
+          test -f web/package.json || { echo "Web app missing. Merge the frontend before running UI tests."; exit 1; }
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          node-version: 20
+
+      - name: Install and build web
+        if: steps.check.outputs.exists == 'true'
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: ""
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Install e2e
+        if: steps.check.outputs.exists == 'true'
+        working-directory: e2e
+        run: |
+          npm ci || npm install
+          npx playwright install --with-deps chromium
+
+      - name: UI tests
+        if: steps.check.outputs.exists == 'true'
+        working-directory: e2e
+        run: npm test
+
+      - name: UI test pass rate
+        if: always() && steps.check.outputs.exists == 'true'
+        working-directory: e2e
+        run: npm run pass-rate
+
+      - name: Upload report
+        if: always() && steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            e2e/results/
+            e2e/playwright-report/
