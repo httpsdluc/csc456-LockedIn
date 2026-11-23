@@ -31,6 +31,10 @@ await client.connect();
 
 try {
   try {
+    // The API creates the extension on startup, but make sure it's there (e.g. a fresh
+    // database, or CI where the test schema that held it was dropped). Stats are kept
+    // by the server, so nothing recorded before this is lost.
+    await client.query("CREATE EXTENSION IF NOT EXISTS pg_stat_statements");
     await client.query("SELECT 1 FROM pg_stat_statements LIMIT 1");
   } catch {
     console.error(
