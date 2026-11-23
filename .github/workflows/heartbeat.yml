@@ -1,0 +1,72 @@
+name: Heartbeat
+
+# Metric iv: scheduled UI test against production, plus average latency.
+# Runs the Playwright suite against the deployed web app (BASE_URL) every hour
+# and times 5 requests each to the web app and the API /health endpoint.
+#
+# The suite expects demo mode (sample meals). Once production is wired to the
+# API (NEXT_PUBLIC_API_URL on Vercel), switch this to a production-safe spec.
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: heartbeat
+  cancel-in-progress: true
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB_URL: https://lockedin-sage.vercel.app
+      API_URL: https://csc456-lockedin.onrender.com/health
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Measure latency
+        id: latency
+        run: |
+          mkdir -p results
+          # Average total time over 5 requests; the first API hit may wake Render's free instance.
+          avg() {
+            for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code} %{time_total}\n" --max-time 60 "$1"; done \
+              | awk '{ if ($1 == 200) ok++; t += $2 } END { printf "{\"ok\":%d,\"of\":5,\"avgMs\":%d}", ok, (t/NR)*1000 }'
+          }
+          web=$(avg "$WEB_URL")
+          api=$(avg "$API_URL")
+          echo "{\"web\":$web,\"api\":$api}" | jq . | tee results/latency.json
+          echo "Web: $(echo "$web" | jq -r '"\(.avgMs) ms avg, \(.ok)/\(.of) OK"')" >> "$GITHUB_STEP_SUMMARY"
+          echo "API: $(echo "$api" | jq -r '"\(.avgMs) ms avg, \(.ok)/\(.of) OK"')" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: UI tests against production
+        env:
+          BASE_URL: ${{ env.WEB_URL }}
+        run: npm test
+
+      - name: UI test pass rate
+        if: always()
+        run: npm run pass-rate
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: heartbeat-${{ github.run_id }}
+          path: |
+            e2e/results/
+            e2e/playwright-report/
+          retention-days: 30
