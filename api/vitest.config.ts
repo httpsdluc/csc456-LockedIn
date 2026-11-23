@@ -8,7 +8,9 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       // server.ts only reads env vars and calls listen(). Everything it wires
       // together is tested through createApp().
-      exclude: ["src/server.ts"],
+      // pg-store.ts is tested against a real database only when TEST_DATABASE_URL
+      // is set (CI always sets it), so leave it out of local runs without one.
+      exclude: process.env.TEST_DATABASE_URL ? ["src/server.ts"] : ["src/server.ts", "src/pg-store.ts"],
       reporter: ["text", "json-summary", "html"],
       thresholds: {
         lines: 80,

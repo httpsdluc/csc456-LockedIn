@@ -21,3 +21,6 @@ services:
         value: "*"
       - key: SEED_FIXTURES
         value: "true"
+      # Postgres connection string. Set it in the Render dashboard, never in this file.
+      - key: DATABASE_URL
+        sync: false
