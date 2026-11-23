@@ -32,6 +32,10 @@ jobs:
         if: steps.check.outputs.exists == 'true'
         run: npm ci || npm install
 
+      - name: Lint
+        if: steps.check.outputs.exists == 'true'
+        run: npm run lint --if-present
+
       - name: Test
         if: steps.check.outputs.exists == 'true'
         run: npm test --if-present
