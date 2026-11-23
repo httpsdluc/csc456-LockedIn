@@ -37,6 +37,7 @@ The three fake meals are dated 2026-10-26, so pass `?date=2026-10-26` to see the
 | `npm test` | Type check, then all tests with a coverage report (fails under 80%) |
 | `npm run build` | Compiles to `dist/` |
 | `npm start` | Runs the compiled build (what the server should run) |
+| `npm run db:slowest` | Slowest queries by mean time (needs `DATABASE_URL` and `pg_stat_statements`). `-- --reset` starts a new window, `-- --json` for raw output. |
 
 The coverage report prints in the terminal and in the CI log for every PR. An HTML version lands in `coverage/index.html`.
 
@@ -47,7 +48,9 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 | `PORT` | `3001` | Port to listen on. 3001 so it doesn't clash with Next.js on 3000. |
 | `GIT_SHA` | `dev` | Commit being run. `/health` reports the first 7 characters so we can tell which deploy is live. On Render this falls back to `RENDER_GIT_COMMIT`, so it doesn't need setting. |
 | `CORS_ORIGIN` | `*` | The web app's URL once it's deployed. Lock this down before real users. |
-| `SEED_FIXTURES` | `true` | Set to `false` to start with no meals. |
+| `SEED_FIXTURES` | `true` | Set to `false` to start with no meals. With Postgres, the sample meals are only added when the table is empty. |
+| `DATABASE_URL` | unset | Postgres connection string. When set, meals are stored in Postgres (table from CONTRACT.md, created on startup). When unset, they live in memory. |
+| `TEST_DATABASE_URL` | unset | Postgres for `npm test`. Each run uses its own schema and drops it after. Without it the Postgres tests are skipped. CI always sets it. |
 
 ## Code layout
 
@@ -55,14 +58,16 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 |---|---|
 | `src/app.ts` | Routes. `createApp()` builds the app without starting a server, which is what the tests use. |
 | `src/server.ts` | Reads env vars and starts listening. Nothing else. |
-| `src/store.ts` | `MealStore` interface plus the in-memory version used for now. |
+| `src/store.ts` | `MealStore` interface plus the in-memory version. |
+| `src/pg-store.ts` | Postgres version of `MealStore`, used when `DATABASE_URL` is set. |
+| `scripts/slowest-queries.mjs` | `npm run db:slowest`: slowest queries by mean time from `pg_stat_statements` (metric xiv). |
 | `src/validation.ts` | Checks POST bodies and fills in defaults. |
 | `src/dates.ts` | Turns `?date=YYYY-MM-DD` into a UTC day range. |
 | `src/fixtures.ts` | Loads `meals.json` and validates it on startup. |
 
 ## Known limits (on purpose for Sprint 1)
 
-- **Data lives in memory.** It resets on every restart. The routes only talk to the `MealStore` interface, so the Postgres version (table in CONTRACT.md) plugs in without touching them.
+- **Calories above about 2.1 billion** pass validation but don't fit the `INTEGER` column, so Postgres returns a 500. Needs a max in CONTRACT.md first.
 - **Days are UTC.** A meal at 9pm in New York lands on the next day's list. Fix when user profiles add a timezone.
 - **One demo user, no auth.** Same as CONTRACT.md.
 - **`goalCalories` is hardcoded to 2500** until profiles exist.
