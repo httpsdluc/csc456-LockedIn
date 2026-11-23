@@ -33,6 +33,7 @@ The three fake meals are dated 2026-10-26, so pass `?date=2026-10-26` to see the
 | Command | What it does |
 |---|---|
 | `npm run dev` | Runs `src/server.ts` with reload on save |
+| `npm run lint` | ESLint (also runs in CI on every PR) |
 | `npm test` | Type check, then all tests with a coverage report (fails under 80%) |
 | `npm run build` | Compiles to `dist/` |
 | `npm start` | Runs the compiled build (what the server should run) |
