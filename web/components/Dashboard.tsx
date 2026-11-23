@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MealForm from "./MealForm";
 import {
   dailySummary as sampleSummary,
@@ -106,21 +106,36 @@ export default function Dashboard() {
     };
   }, [apiUrl]);
 
+  // Each refresh gets a number. When several overlap (say, two quick deletes),
+  // only the newest one updates the page, so an older, slower response can't
+  // overwrite newer data.
+  const latestRefresh = useRef(0);
+
   async function refresh(url: string) {
+    const refreshId = ++latestRefresh.current;
     const [loadedMeals, loadedSummary] = await Promise.all([
       fetchMeals(url),
       fetchDailySummary(url),
     ]);
+    if (refreshId !== latestRefresh.current) return;
     setMeals(loadedMeals);
     setLiveSummary(loadedSummary);
   }
 
-  // Errors are left to MealForm, which shows them under the form.
+  // A failed save is left to MealForm, which shows it under the form.
+  // Once the save succeeds, a failed refresh must not be reported as a failed
+  // save, or the user would retry and log the meal twice.
   async function handleAdd(meal: NewMeal) {
     setActionError(null);
     if (mode === "live") {
       await createMeal(apiUrl!, meal);
-      await refresh(apiUrl!);
+      try {
+        await refresh(apiUrl!);
+      } catch {
+        setActionError(
+          "Meal saved, but the list could not be updated. Refresh the page to see it."
+        );
+      }
       return;
     }
     setMeals((current) => [
@@ -137,9 +152,16 @@ export default function Dashboard() {
     }
     try {
       await deleteMeal(apiUrl!, id);
-      await refresh(apiUrl!);
     } catch (err) {
       setActionError(errorMessage(err, "Could not delete the meal. Try again."));
+      return;
+    }
+    try {
+      await refresh(apiUrl!);
+    } catch {
+      setActionError(
+        "Meal deleted, but the list could not be updated. Refresh the page to see the change."
+      );
     }
   }
 
