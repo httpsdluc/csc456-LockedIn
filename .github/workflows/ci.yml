@@ -119,6 +119,11 @@ jobs:
         working-directory: e2e
         run: npm test
 
+      - name: Validate heartbeat against controlled responses
+        if: steps.check.outputs.exists == 'true'
+        working-directory: e2e
+        run: npm run test:heartbeat:validation
+
       - name: UI test pass rate
         if: always() && steps.check.outputs.exists == 'true'
         working-directory: e2e

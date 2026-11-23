@@ -32,8 +32,25 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Check production dashboard and measure readiness
+        id: heartbeat
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
           HEARTBEAT_EXPECTED_MODE: ${{ vars.HEARTBEAT_EXPECTED_MODE }}
           HEARTBEAT_TIMEOUT_MS: ${{ vars.HEARTBEAT_TIMEOUT_MS || '30000' }}
         run: npm run test:heartbeat
+      - name: Publish heartbeat summary
+        if: always()
+        env:
+          HEARTBEAT_TEST_OUTCOME: ${{ steps.heartbeat.outcome }}
+        run: npm run heartbeat:summary
+      - name: Upload heartbeat results and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-heartbeat
+          path: |
+            e2e/test-results/heartbeat/
+            e2e/test-results/heartbeat-summary.json
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14

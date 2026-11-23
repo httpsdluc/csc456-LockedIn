@@ -43,6 +43,7 @@ Repository variables are not automatically exported locally. In PowerShell:
 $env:PRODUCTION_URL = "https://lockedin-sage.vercel.app"
 $env:HEARTBEAT_EXPECTED_MODE = "demo"
 npm --prefix e2e run test:heartbeat
+npm --prefix e2e run heartbeat:summary
 ```
 
 The separate `playwright.heartbeat.config.ts` runs only `heartbeat/` using one
@@ -75,7 +76,49 @@ Failures keep readiness latency `null` and record elapsed time instead. The
 default deadline is 30 seconds for the entire test, with no retries; this is an
 availability timeout, not a separate performance target. Configuration errors or
 browser startup failures occur before the test and appear in the command log
-without a per-test JSON file. Generated output is ignored by Git.
+without a per-test JSON file. The reporting step then publishes **unavailable**,
+never an old success. One-shot heartbeat runs clear old JSON metrics before
+loading Playwright configuration. Generated output is ignored by Git.
 
-Published summaries, uploaded screenshots/traces, and comprehensive controlled
-failure-case validation remain subsequent SCRUM-36 steps.
+### Results and failure evidence
+
+The scheduled/manual workflow always attempts summary publication and artifact
+upload after the heartbeat step, including failed checks. The summary shows the
+result, timestamp, URL, expected mode, HTTP status, latency, elapsed time, and
+failure reason. It also uses the original test step outcome so setup/teardown
+errors cannot appear successful just because per-test metrics passed.
+
+Download **production-heartbeat** from the workflow run's Artifacts section. It
+contains raw `heartbeat.json`, `heartbeat-summary.json`, and screenshots and traces
+for failed browser checks. Artifacts are retained for 14 days. A configuration
+or browser-startup failure may have only the summary; inspect workflow logs for
+the underlying error. Tests and reporting return nonzero on failure, so publishing
+evidence never turns a failed check green.
+
+Open a downloaded trace with:
+
+```bash
+npx playwright show-trace path/to/trace.zip
+```
+
+### Controlled validation
+
+```bash
+npm --prefix e2e run test:heartbeat:validation
+```
+
+This runs 15 Node reporter tests and 15 controlled Chromium/configuration checks.
+The browser tests intercept HTTPS requests locally; they never contact production
+and do not require production repository variables. They exercise the same
+dashboard checker used by the production heartbeat: healthy demo/live pages,
+empty data, exceeded goals, HTTP errors, missing dashboard, stuck loading,
+unexpected offline/demo fallback, invalid numbers, and navigation timeouts.
+Configuration checks cover missing URL/mode, invalid mode, HTTP targets, and
+invalid timeouts. Reporter tests cover missing/invalid/duplicate results, timing
+validation, failure exit status, Markdown escaping, and stale-result cleanup.
+Normal PR CI runs this command alongside the existing UI suite.
+
+Before closing SCRUM-36, configure the repository variables, merge the workflow
+into `main`, successfully run it manually, and verify at least one scheduled run.
+Local production checks validate the test itself; they do not establish that the
+GitHub schedule and repository settings are active.

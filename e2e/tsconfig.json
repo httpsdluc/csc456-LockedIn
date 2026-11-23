@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["playwright.config.ts", "playwright.heartbeat.config.ts", "tests", "heartbeat"]
+  "include": ["playwright.config.ts", "playwright.heartbeat.config.ts", "playwright.heartbeat-validation.config.ts", "tests", "heartbeat", "heartbeat-validation"]
 }

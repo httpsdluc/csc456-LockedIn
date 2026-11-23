@@ -28,7 +28,12 @@ export default defineConfig({
   timeout: timeoutMs,
   expect: { timeout: timeoutMs },
   reporter: "list",
-  use: { baseURL: productionUrl, navigationTimeout: timeoutMs },
+  use: {
+    baseURL: productionUrl,
+    navigationTimeout: timeoutMs,
+    screenshot: "only-on-failure",
+    trace: "retain-on-failure",
+  },
   projects: [{ name: "production-chromium", use: { ...devices["Desktop Chrome"] } }],
   // Deliberately no webServer: this suite checks only the configured deployment.
 });

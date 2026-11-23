@@ -6,7 +6,9 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:heartbeat": "playwright test --config=playwright.heartbeat.config.ts",
+    "test:heartbeat": "node scripts/heartbeat-summary.mjs --clean && playwright test --config=playwright.heartbeat.config.ts",
+    "test:heartbeat:validation": "node --test scripts/heartbeat-summary.test.mjs && playwright test --config=playwright.heartbeat-validation.config.ts",
+    "heartbeat:summary": "node scripts/heartbeat-summary.mjs",
     "pass-rate": "node scripts/pass-rate.mjs"
   },
   "devDependencies": {
