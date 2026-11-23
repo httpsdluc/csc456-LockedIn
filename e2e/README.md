@@ -25,7 +25,7 @@ npm run pass-rate                 # prints the pass rate from results/results.js
 - Pass-rate reporting returns a failure for zero tests, failures, flaky tests, skipped tests, or runner errors, after writing the results and summary.
 - Production heartbeat and API integration tests are separate from this UI suite.
 
-## Production heartbeat (SCRUM-36, setup and read-only check)
+## Production heartbeat (SCRUM-36)
 
 Production target verified on 2026-11-22: `https://lockedin-sage.vercel.app`.
 The deployed dashboard currently uses **demo** mode. Configure the following
@@ -35,6 +35,7 @@ GitHub Actions repository variables when wiring the scheduled workflow:
 | --- | --- | --- |
 | `PRODUCTION_URL` | `https://lockedin-sage.vercel.app` | Exact dashboard URL to navigate to; HTTPS is required. |
 | `HEARTBEAT_EXPECTED_MODE` | `demo` | Explicitly `demo` or `live`; change to `live` when the deployed dashboard connects to its API. |
+| `HEARTBEAT_TIMEOUT_MS` | `30000` (optional) | Total readiness-test deadline, including navigation; whole milliseconds from 1000 to 120000. |
 
 Repository variables are not automatically exported locally. In PowerShell:
 
@@ -55,5 +56,26 @@ Loading, offline fallback, and an unexpected demo banner cannot pass a live-mode
 check. It does not assert specific meal counts or totals, submit forms, or delete
 meals. It works with an empty meal list and an exceeded calorie goal.
 
-Scheduling, latency measurements, and published result summaries are subsequent
-SCRUM-36 work; this command currently provides the read-only readiness check.
+The `Production heartbeat` workflow runs at minutes 17 and 47 of each hour (UTC)
+and supports **Run workflow** in GitHub Actions. Configure the required repository
+variables under **Settings → Secrets and variables → Actions → Variables** before
+enabling the scheduled run. Missing or invalid settings fail the check. The job
+installs only e2e dependencies and Chromium; it does not build or start the app.
+Scheduled execution starts after the workflow is merged into the default branch;
+GitHub may delay scheduled runs, so the 30-minute cadence is not an exact SLA.
+
+Each executed test writes `heartbeat.json` inside its generated directory under
+`e2e/test-results/heartbeat/` and prints the same JSON in the workflow log. It
+records UTC timestamp, target URL, expected mode, result, HTTP status when known,
+readiness latency, elapsed time, and the failure reason when applicable.
+
+Readiness latency uses a monotonic clock from immediately before navigation until
+all dashboard checks pass. Browser setup and dependency installation are excluded.
+Failures keep readiness latency `null` and record elapsed time instead. The
+default deadline is 30 seconds for the entire test, with no retries; this is an
+availability timeout, not a separate performance target. Configuration errors or
+browser startup failures occur before the test and appear in the command log
+without a per-test JSON file. Generated output is ignored by Git.
+
+Published summaries, uploaded screenshots/traces, and comprehensive controlled
+failure-case validation remain subsequent SCRUM-36 steps.
