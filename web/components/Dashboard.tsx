@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import MealForm from "./MealForm";
 import {
   dailySummary as sampleSummary,
@@ -19,6 +20,7 @@ import {
   summarize,
   type NewMeal,
 } from "@/lib/api";
+import { useSavedProfile } from "@/lib/profile";
 
 // demo:    no API configured, sample meals, changes stay in the browser
 // loading: waiting for the API
@@ -83,6 +85,7 @@ export default function Dashboard() {
   const [meals, setMeals] = useState<Meal[]>(apiUrl ? [] : sampleMeals);
   const [liveSummary, setLiveSummary] = useState<DailySummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const savedProfile = useSavedProfile();
 
   useEffect(() => {
     if (!apiUrl) return;
@@ -174,11 +177,12 @@ export default function Dashboard() {
   }
 
   const summary = liveSummary ?? summarize(meals, sampleSummary.date);
+  // The goal from the user's profile wins over the API's hardcoded 2500.
+  const goalCalories = savedProfile?.dailyCalorieGoal ?? summary.goalCalories;
+  const remainingCalories = goalCalories - summary.calories;
   const progress =
-    summary.goalCalories > 0
-      ? Math.min((summary.calories / summary.goalCalories) * 100, 100)
-      : 0;
-  const overGoal = summary.remainingCalories < 0;
+    goalCalories > 0 ? Math.min((summary.calories / goalCalories) * 100, 100) : 0;
+  const overGoal = remainingCalories < 0;
 
   const macroCalories = MACROS.map((macro) => summary[macro.key] * macro.kcalPerGram);
   const macroTotal = macroCalories.reduce((sum, value) => sum + value, 0);
@@ -239,8 +243,16 @@ export default function Dashboard() {
                   data-testid="stat-daily-goal"
                   className="mt-1 text-3xl font-extrabold tabular-nums text-[#B9B6DA] [font-family:var(--font-display)]"
                 >
-                  {summary.goalCalories}
+                  {goalCalories}
                 </p>
+                {/* A link, not a <p>: the Playwright tests read the <p> after each label. */}
+                <Link
+                  href="/profile"
+                  data-testid="edit-goal-link"
+                  className="mt-1 inline-block text-xs text-[#8B7CFF] underline hover:text-[#A397FF]"
+                >
+                  {savedProfile ? "Edit goal" : "Set your goal"}
+                </Link>
               </div>
 
               <div>
@@ -252,7 +264,7 @@ export default function Dashboard() {
                     overGoal ? "text-[#FF7A7A]" : "text-[#8B7CFF]"
                   }`}
                 >
-                  {summary.remainingCalories}
+                  {remainingCalories}
                 </p>
               </div>
             </div>

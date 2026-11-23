@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Home from "../app/page";
 import { meals, type Meal } from "../lib/fixtures";
+import { PROFILE_STORAGE_KEY, type Profile } from "../lib/profile";
 import { API_URL, installFakeApi } from "./helpers";
 
 afterEach(() => {
   cleanup();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  localStorage.clear();
 });
 
 const stat = (id: string) => screen.getByTestId(`stat-${id}`);
@@ -20,6 +22,16 @@ function logMeal(name: string, calories: string) {
 
 function useLiveApi() {
   vi.stubEnv("NEXT_PUBLIC_API_URL", API_URL);
+}
+
+function saveProfileInBrowser(dailyCalorieGoal: number) {
+  const profile: Profile = {
+    goal: "cut",
+    fitnessLevel: "beginner",
+    dailyCalorieGoal,
+    workoutDaysPerWeek: 3,
+  };
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
 }
 
 const yogurt: Meal = {
@@ -75,6 +87,47 @@ describe("dashboard in demo mode (no API configured)", () => {
     );
     expect(stat("calories-consumed")).toHaveTextContent("0");
     expect(stat("progress")).toHaveTextContent("0%");
+  });
+});
+
+describe("dashboard with a saved profile", () => {
+  it("links to the profile page to set a goal", () => {
+    render(<Home />);
+    expect(screen.getByRole("link", { name: "Set your goal" })).toHaveAttribute("href", "/profile");
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("uses the daily goal from the saved profile", () => {
+    saveProfileInBrowser(2300);
+    render(<Home />);
+
+    expect(stat("daily-goal")).toHaveTextContent("2300");
+    expect(stat("remaining-calories")).toHaveTextContent("1150");
+    expect(stat("progress")).toHaveTextContent("50%");
+    expect(screen.getByRole("link", { name: "Edit goal" })).toHaveAttribute("href", "/profile");
+  });
+
+  it("updates when the profile is changed in another tab", async () => {
+    render(<Home />);
+    expect(stat("daily-goal")).toHaveTextContent("2500");
+
+    saveProfileInBrowser(2300);
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: PROFILE_STORAGE_KEY }));
+    });
+
+    await waitFor(() => expect(stat("daily-goal")).toHaveTextContent("2300"));
+  });
+
+  it("uses the profile goal instead of the API's default goal", async () => {
+    useLiveApi();
+    installFakeApi([yogurt]);
+    saveProfileInBrowser(2000);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    expect(stat("daily-goal")).toHaveTextContent("2000");
+    expect(stat("remaining-calories")).toHaveTextContent("1850");
   });
 });
 
