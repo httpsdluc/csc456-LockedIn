@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { MemoryMealStore } from "../src/store.js";
-import { buildApp } from "./helpers.js";
+import { MemoryMealStore } from "../../src/store.js";
+import { buildApp } from "../helpers.js";
 
 describe("GET /summary/daily", () => {
   it("matches the CONTRACT.md example exactly for the fixture day", async () => {

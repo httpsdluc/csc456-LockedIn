@@ -1,0 +1,49 @@
+name: PR coverage comment
+
+# This workflow must be on the default branch before GitHub can trigger it.
+# PR code runs only in CI, with a read-only token. This publisher never checks
+# out the PR or runs any code from the downloaded artifacts.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: coverage-comment-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted reporting code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Download coverage data from the completed CI run
+        # Still publish an explicit Unavailable result if artifacts expired or
+        # could not be downloaded, instead of leaving an old percentage visible.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: coverage-*
+          path: ${{ runner.temp }}/pr-coverage
+
+      - name: Create or update coverage comment
+        uses: actions/github-script@v7
+        env:
+          COVERAGE_REPORT_DIR: ${{ runner.temp }}/pr-coverage
+        with:
+          script: |
+            const { postCoverage } = require('./.github/scripts/post-coverage.cjs');
+            await postCoverage({ github, context, core, reportDir: process.env.COVERAGE_REPORT_DIR });
