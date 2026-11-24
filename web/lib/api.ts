@@ -55,7 +55,7 @@ export function summarize(
   };
 }
 
-async function request<T>(
+export async function request<T>(
   baseUrl: string,
   path: string,
   init?: RequestInit

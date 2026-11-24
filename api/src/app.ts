@@ -3,6 +3,7 @@ import express, { type ErrorRequestHandler, type Express, type Response } from "
 import { parseDay } from "./dates.js";
 import type { MealStore } from "./store.js";
 import { validateNewMeal } from "./validation.js";
+import { createWorkoutRouter } from "./workouts.js";
 
 export interface AppOptions {
   store: MealStore;
@@ -14,6 +15,7 @@ export interface AppOptions {
   corsOrigin?: string;
   /** Injected so tests can pin "today". */
   now?: () => Date;
+  openRouterApiKey?: string;
 }
 
 type ErrorCode = "VALIDATION_ERROR" | "NOT_FOUND" | "PAYLOAD_TOO_LARGE" | "INTERNAL_ERROR";
@@ -32,10 +34,12 @@ export function createApp({
   goalCalories = 2500,
   corsOrigin = "*",
   now = () => new Date(),
+  openRouterApiKey,
 }: AppOptions): Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(cors({ origin: corsOrigin }));
+  app.use("/workouts", express.json({ limit: "32kb" }), createWorkoutRouter(openRouterApiKey, now));
   app.use(express.json({ limit: "10kb" }));
 
   app.get("/health", async (_req, res) => {

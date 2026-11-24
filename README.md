@@ -15,6 +15,8 @@ CSC 456 team project.
 
 How the pieces talk to each other: [CONTRACT.md](CONTRACT.md).
 
+[Adaptive Workouts setup and walkthrough](README.workouts.md)
+
 ## Workflow
 
 1. Pick a ticket in Jira.
