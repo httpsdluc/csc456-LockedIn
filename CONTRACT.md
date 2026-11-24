@@ -86,3 +86,48 @@ Keep these two files identical. The daily summary example above is the total of 
 
 - `api/src/fixtures/meals.json`
 - `web/lib/fixtures.ts`
+
+## Adaptive workout plans (SCRUM-6)
+
+The browser supplies the saved fitness profile and keeps its active plan and
+check-ins in local storage, scoped to that browser. The API does not persist
+this data. These endpoints use server-side OpenRouter credentials. DeepSeek
+V4.1 Flash 1017 drafts plans through Mistral. Jev selects a review action from
+a fixed list using the current plan and recent check-ins.
+
+### POST /workouts/plan
+
+Request a plan with `goal` (`cut`, `maintain`, or `bulk`), `fitnessLevel`
+(`beginner`, `intermediate`, or `advanced`), `workoutDaysPerWeek` (integer
+from 1 to 7), and optional `equipment` (`bodyweight`, `dumbbells`, or
+`gym`, default `bodyweight`). A saved profile with zero workout days does
+not generate a plan.
+
+Returns 200 with a plan. `sessions` has exactly one entry per requested
+workout day, in training order. Each session has a title and one to five
+exercises. Each exercise has a name, 1 to 4 sets, and a short target such
+as "8–12 reps" or "30 seconds".
+
+```json
+{"sessions":[{"title":"Full body","exercises":[{"name":"Bodyweight squat","sets":2,"target":"8–12 reps"}]}]}
+```
+
+### POST /workouts/review
+
+Send the same top-level profile fields, the accepted `plan` in the shape
+above, and up to 28 `checkIns` from the last four weeks. Each check-in
+contains a UTC Monday `week` (YYYY-MM-DD), a one-based `session` index in the
+accepted plan, and a `result` of `completed`, `too_easy`, `too_hard`,
+`skipped`, or `schedule_conflict`. Each week/session pair must be unique.
+
+Returns 200 with `action` and `plan`. The action is `keep_plan`,
+`adjust_schedule`, `reduce_volume`, or `increase_volume`. For
+`keep_plan`, `plan` is null. Otherwise it is a proposed replacement that
+the user can accept. The saved profile determines the maximum number of
+training days. Repeated schedule conflicts on the same session can remove
+one day, down to a minimum of one. A lower-confidence recommendation
+keeps the current plan.
+
+Both endpoints return a 400 for invalid input, 503 when workout AI is
+unconfigured, and 502 when an upstream request or response fails. Errors use
+the API's standard `{error, message}` shape.
