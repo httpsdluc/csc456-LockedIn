@@ -282,6 +282,37 @@ describe("dashboard connected to the API", () => {
     expect(stat("calories-consumed")).toHaveTextContent("95");
   });
 
+  it("does not show a refresh error when an older refresh fails after a newer one succeeded", async () => {
+    useLiveApi();
+    const fetchMock = installFakeApi([yogurt]);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    // Same setup as the test above, but the older reload fails instead of arriving late.
+    const held: { ok: () => void; fail: () => void }[] = [];
+    const realFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((input, init) => {
+      const response = realFetch(input, init);
+      if ((init?.method ?? "GET") !== "GET") return response;
+      return new Promise((resolve, reject) =>
+        held.push({ ok: () => resolve(response), fail: () => reject(new TypeError("Failed to fetch")) })
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Greek yogurt" }));
+    await waitFor(() => expect(held).toHaveLength(2));
+    logMeal("Apple", "95");
+    await waitFor(() => expect(held).toHaveLength(4));
+
+    held.slice(2).forEach((reload) => reload.ok());
+    expect(await screen.findByText("Apple")).toBeInTheDocument();
+    held.slice(0, 2).forEach((reload) => reload.fail());
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText("Apple")).toBeInTheDocument();
+    expect(screen.queryByTestId("meal-list-error")).not.toBeInTheDocument();
+  });
+
   it("shows 0% progress when the goal is 0", async () => {
     useLiveApi();
     installFakeApi([yogurt], { goalCalories: 0 });
