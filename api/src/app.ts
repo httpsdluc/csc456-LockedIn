@@ -1,7 +1,9 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler, type Express, type Response } from "express";
 import { parseDay, toIsoUtc } from "./dates.js";
+import { createJsonLogger, describeError, type Logger } from "./logger.js";
 import { MemoryProfileStore, type ProfileStore } from "./profile-store.js";
+import { requestIdOf, requestLog } from "./request-log.js";
 import type { MealStore } from "./store.js";
 import { validateNewMeal, validateProfile } from "./validation.js";
 
@@ -17,12 +19,14 @@ export interface AppOptions {
   corsOrigin?: string;
   /** Injected so tests can pin "today". */
   now?: () => Date;
+  /** Defaults to JSON lines on stdout/stderr. */
+  logger?: Logger;
 }
 
 type ErrorCode = "VALIDATION_ERROR" | "NOT_FOUND" | "PAYLOAD_TOO_LARGE" | "INTERNAL_ERROR";
 
 function sendError(res: Response, status: number, error: ErrorCode, message: string): void {
-  res.status(status).json({ error, message });
+  res.status(status).json({ error, message, requestId: requestIdOf(res) });
 }
 
 function roundToTenth(value: number): number {
@@ -36,10 +40,13 @@ export function createApp({
   goalCalories = 2500,
   corsOrigin = "*",
   now = () => new Date(),
+  logger = createJsonLogger(),
 }: AppOptions): Express {
   const app = express();
   app.disable("x-powered-by");
-  app.use(cors({ origin: corsOrigin }));
+  // Before express.json() so bad JSON still gets a request id.
+  app.use(requestLog(logger));
+  app.use(cors({ origin: corsOrigin, exposedHeaders: ["X-Request-Id"] }));
   app.use(express.json({ limit: "10kb" }));
 
   app.get("/health", async (_req, res) => {
@@ -124,7 +131,7 @@ export function createApp({
     sendError(res, 404, "NOT_FOUND", `no route for ${req.method} ${req.path}`);
   });
 
-  const handleErrors: ErrorRequestHandler = (err, _req, res, _next) => {
+  const handleErrors: ErrorRequestHandler = (err, req, res, _next) => {
     const type = (err as { type?: string }).type;
     if (type === "entity.parse.failed") {
       return sendError(res, 400, "VALIDATION_ERROR", "request body is not valid JSON");
@@ -132,7 +139,14 @@ export function createApp({
     if (type === "entity.too.large") {
       return sendError(res, 413, "PAYLOAD_TOO_LARGE", "request body is too large");
     }
-    console.error(err);
+    logger({
+      level: "error",
+      msg: "unhandled error",
+      requestId: requestIdOf(res),
+      method: req.method,
+      path: req.path,
+      error: describeError(err),
+    });
     sendError(res, 500, "INTERNAL_ERROR", "something went wrong");
   };
   app.use(handleErrors);

@@ -10,7 +10,7 @@ describe("GET /profile", () => {
   it("is 404 until a profile is saved", async () => {
     const res = await request(buildApp().app).get("/profile");
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: "NOT_FOUND", message: "no profile saved yet" });
+    expect(res.body).toEqual({ error: "NOT_FOUND", message: "no profile saved yet", requestId: expect.any(String) });
   });
 
   it("returns the saved profile", async () => {
@@ -56,6 +56,7 @@ describe("PUT /profile", () => {
     expect(res.body).toEqual({
       error: "VALIDATION_ERROR",
       message: "dailyCalorieGoal must be a whole number from 1000 to 6000",
+      requestId: expect.any(String),
     });
     expect((await request(app).get("/profile")).body.dailyCalorieGoal).toBe(2200);
   });
@@ -82,15 +83,9 @@ describe("PUT /profile", () => {
         throw new Error("disk full");
       },
     };
-    const original = console.error;
-    console.error = () => {};
-    try {
-      const res = await request(buildApp({ profileStore: broken }).app).put("/profile").send(cut);
-      expect(res.status).toBe(500);
-      expect(res.body).toEqual({ error: "INTERNAL_ERROR", message: "something went wrong" });
-    } finally {
-      console.error = original;
-    }
+    const res = await request(buildApp({ profileStore: broken }).app).put("/profile").send(cut);
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "INTERNAL_ERROR", message: "something went wrong", requestId: expect.any(String) });
   });
 });
 
