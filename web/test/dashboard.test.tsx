@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Home from "../app/page";
 import { meals, type Meal } from "../lib/fixtures";
+import { PROFILE_STORAGE_KEY, type Profile } from "../lib/profile";
 import { API_URL, installFakeApi } from "./helpers";
 
 afterEach(() => {
   cleanup();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  localStorage.clear();
 });
 
 const stat = (id: string) => screen.getByTestId(`stat-${id}`);
@@ -20,6 +22,16 @@ function logMeal(name: string, calories: string) {
 
 function useLiveApi() {
   vi.stubEnv("NEXT_PUBLIC_API_URL", API_URL);
+}
+
+function saveProfileInBrowser(dailyCalorieGoal: number) {
+  const profile: Profile = {
+    goal: "cut",
+    fitnessLevel: "beginner",
+    dailyCalorieGoal,
+    workoutDaysPerWeek: 3,
+  };
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
 }
 
 const yogurt: Meal = {
@@ -38,6 +50,7 @@ describe("dashboard in demo mode (no API configured)", () => {
     render(<Home />);
     expect(screen.getByTestId("data-status")).toHaveTextContent("Demo mode");
     expect(screen.getAllByTestId("meal-item")).toHaveLength(meals.length);
+    expect(screen.getByText(`${meals.length} meals`)).toBeInTheDocument();
   });
 
   it("adds a logged meal and updates the totals", async () => {
@@ -77,6 +90,47 @@ describe("dashboard in demo mode (no API configured)", () => {
   });
 });
 
+describe("dashboard with a saved profile", () => {
+  it("links to the profile page to set a goal", () => {
+    render(<Home />);
+    expect(screen.getByRole("link", { name: "Set your goal" })).toHaveAttribute("href", "/profile");
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("uses the daily goal from the saved profile", () => {
+    saveProfileInBrowser(2300);
+    render(<Home />);
+
+    expect(stat("daily-goal")).toHaveTextContent("2300");
+    expect(stat("remaining-calories")).toHaveTextContent("1150");
+    expect(stat("progress")).toHaveTextContent("50%");
+    expect(screen.getByRole("link", { name: "Edit goal" })).toHaveAttribute("href", "/profile");
+  });
+
+  it("updates when the profile is changed in another tab", async () => {
+    render(<Home />);
+    expect(stat("daily-goal")).toHaveTextContent("2500");
+
+    saveProfileInBrowser(2300);
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: PROFILE_STORAGE_KEY }));
+    });
+
+    await waitFor(() => expect(stat("daily-goal")).toHaveTextContent("2300"));
+  });
+
+  it("uses the profile goal instead of the API's default goal", async () => {
+    useLiveApi();
+    installFakeApi([yogurt]);
+    saveProfileInBrowser(2000);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    expect(stat("daily-goal")).toHaveTextContent("2000");
+    expect(stat("remaining-calories")).toHaveTextContent("1850");
+  });
+});
+
 describe("dashboard connected to the API", () => {
   it("shows a loading message, then the meals from the API", async () => {
     useLiveApi();
@@ -86,6 +140,7 @@ describe("dashboard connected to the API", () => {
     expect(screen.getByTestId("data-status")).toHaveTextContent("Loading");
 
     expect(await screen.findByText("Greek yogurt")).toBeInTheDocument();
+    expect(screen.getByText("1 meal")).toBeInTheDocument();
     expect(screen.queryByTestId("data-status")).not.toBeInTheDocument();
     expect(stat("calories-consumed")).toHaveTextContent("150");
     expect(stat("daily-goal")).toHaveTextContent("2500");
@@ -150,6 +205,81 @@ describe("dashboard connected to the API", () => {
 
     expect(await screen.findByTestId("meal-list-error")).toHaveTextContent("meal 7 not found");
     expect(within(screen.getByTestId("meal-list")).getByText("Greek yogurt")).toBeInTheDocument();
+  });
+
+  it("does not report a saved meal as failed when the refresh after saving fails", async () => {
+    useLiveApi();
+    const fetchMock = installFakeApi([yogurt]);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    // From now on the save works, but reloading the list fails.
+    const realFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if ((init?.method ?? "GET") === "GET") throw new TypeError("Failed to fetch");
+      return realFetch(input, init);
+    });
+
+    logMeal("Apple", "95");
+
+    expect(await screen.findByTestId("meal-list-error")).toHaveTextContent("Meal saved");
+    expect(screen.queryByTestId("meal-form-error")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Meal name")).toHaveValue(""));
+    expect(
+      fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")
+    ).toHaveLength(1);
+  });
+
+  it("does not report a deleted meal as failed when the refresh after deleting fails", async () => {
+    useLiveApi();
+    const fetchMock = installFakeApi([yogurt]);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    const realFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if ((init?.method ?? "GET") === "GET") throw new TypeError("Failed to fetch");
+      return realFetch(input, init);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete Greek yogurt" }));
+
+    expect(await screen.findByTestId("meal-list-error")).toHaveTextContent("Meal deleted");
+  });
+
+  it("ignores an older refresh that finishes after a newer one", async () => {
+    useLiveApi();
+    const fetchMock = installFakeApi([yogurt]);
+    render(<Home />);
+    await screen.findByText("Greek yogurt");
+
+    // Hold every reload. Each one remembers what the server had when it was
+    // sent, and the test decides the order the answers arrive in.
+    const held: (() => void)[] = [];
+    const realFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((input, init) => {
+      const response = realFetch(input, init);
+      if ((init?.method ?? "GET") !== "GET") return response;
+      return new Promise((resolve) => held.push(() => resolve(response)));
+    });
+
+    // 1. Delete the yogurt. Its reload sees no meals.
+    fireEvent.click(screen.getByRole("button", { name: "Delete Greek yogurt" }));
+    await waitFor(() => expect(held).toHaveLength(2));
+
+    // 2. Add an apple. Its reload sees the apple.
+    logMeal("Apple", "95");
+    await waitFor(() => expect(held).toHaveLength(4));
+
+    // The newer reload answers first, then the older one arrives late.
+    held.slice(2).forEach((release) => release());
+    expect(await screen.findByText("Apple")).toBeInTheDocument();
+    held.slice(0, 2).forEach((release) => release());
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText("Apple")).toBeInTheDocument();
+    expect(screen.queryByText("Greek yogurt")).not.toBeInTheDocument();
+    expect(stat("calories-consumed")).toHaveTextContent("95");
   });
 
   it("shows 0% progress when the goal is 0", async () => {
