@@ -1,0 +1,56 @@
+name: Production heartbeat
+
+on:
+  schedule:
+    # Twice an hour, offset from the busiest minute. GitHub schedules use UTC.
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-heartbeat-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install test dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Check production dashboard and measure readiness
+        id: heartbeat
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          HEARTBEAT_EXPECTED_MODE: ${{ vars.HEARTBEAT_EXPECTED_MODE }}
+          HEARTBEAT_TIMEOUT_MS: ${{ vars.HEARTBEAT_TIMEOUT_MS || '30000' }}
+        run: npm run test:heartbeat
+      - name: Publish heartbeat summary
+        if: always()
+        env:
+          HEARTBEAT_TEST_OUTCOME: ${{ steps.heartbeat.outcome }}
+        run: npm run heartbeat:summary
+      - name: Upload heartbeat results and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-heartbeat
+          path: |
+            e2e/test-results/heartbeat/
+            e2e/test-results/heartbeat-summary.json
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14

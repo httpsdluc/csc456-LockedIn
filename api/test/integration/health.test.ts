@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { MemoryMealStore } from "../src/store.js";
-import { buildApp } from "./helpers.js";
+import { MemoryMealStore } from "../../src/store.js";
+import { buildApp } from "../helpers.js";
 
 describe("GET /health", () => {
   it("returns the shape in CONTRACT.md when storage is up", async () => {

@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// BASE_URL points the suite at an already-running site (e.g. production for the
-// heartbeat test). When it is unset we start the Next.js app from ../web ourselves.
+// BASE_URL points the demo-mode UI suite at an already-running site. Production
+// heartbeat checks use playwright.heartbeat.config.ts instead. When BASE_URL is
+// unset we start the Next.js app from ../web ourselves.
 const externalUrl = process.env.BASE_URL;
 const localPort = 3100;
 const baseURL = externalUrl ?? `http://localhost:${localPort}`;
