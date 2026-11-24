@@ -116,11 +116,16 @@ export default function Dashboard() {
 
   async function refresh(url: string) {
     const refreshId = ++latestRefresh.current;
-    const [loadedMeals, loadedSummary] = await Promise.all([
-      fetchMeals(url),
-      fetchDailySummary(url),
-    ]);
+    let loaded;
+    try {
+      loaded = await Promise.all([fetchMeals(url), fetchDailySummary(url)]);
+    } catch (err) {
+      // An older refresh failing doesn't matter once a newer one has started.
+      if (refreshId === latestRefresh.current) throw err;
+      return;
+    }
     if (refreshId !== latestRefresh.current) return;
+    const [loadedMeals, loadedSummary] = loaded;
     setMeals(loadedMeals);
     setLiveSummary(loadedSummary);
   }
