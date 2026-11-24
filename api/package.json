@@ -16,6 +16,7 @@
     "test:coverage": "npm run test:clean-reports && tsc --noEmit && vitest run --coverage",
     "test:integration": "npm run test:clean-reports && tsc --noEmit && vitest run test/integration",
     "integration:pass-rate": "node scripts/integration-pass-rate.mjs",
+    "lint": "eslint .",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -23,14 +24,18 @@
     "express": "^5.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.19.43",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "4.1.12",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2",
     "vitest": "4.1.12"
   }
 }
