@@ -1,0 +1,82 @@
+name: Deploy time
+
+# Metric vi: build-to-deployment time.
+# Render auto-deploys the API when api/ or render.yaml changes on main. This job
+# waits until /health reports the pushed commit, then records how long it took
+# from the merge (the commit's timestamp) to the new version serving traffic.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "render.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-time
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HEALTH_URL: https://csc456-lockedin.onrender.com/health
+      # Render free builds plus a cold start can take a while; give up after 25 min.
+      MAX_WAIT_SEC: 1500
+    steps:
+      - name: Wait for the new commit on /health
+        id: wait
+        env:
+          SHA: ${{ github.sha }}
+          COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
+        run: |
+          short="${SHA:0:7}"
+          # head_commit.timestamp is the merge time for GitHub merge commits.
+          # workflow_dispatch has no head commit, so fall back to "now".
+          if [ -n "$COMMIT_TIME" ]; then start=$(date -u -d "$COMMIT_TIME" +%s); else start=$(date -u +%s); fi
+          echo "Waiting for version $short at $HEALTH_URL"
+          while true; do
+            body=$(curl -s --max-time 30 "$HEALTH_URL" || true)
+            version=$(echo "$body" | jq -r '.version // empty' 2>/dev/null || true)
+            now=$(date -u +%s)
+            elapsed=$((now - start))
+            if [ "$version" = "$short" ]; then
+              echo "Live after ${elapsed}s: $body"
+              echo "seconds=$elapsed" >> "$GITHUB_OUTPUT"
+              echo "status=live" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [ "$elapsed" -ge "$MAX_WAIT_SEC" ]; then
+              echo "::error::Commit $short not live after ${elapsed}s (last version: ${version:-none})"
+              echo "seconds=$elapsed" >> "$GITHUB_OUTPUT"
+              echo "status=timeout" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            sleep 15
+          done
+
+      - name: Record result
+        if: always()
+        env:
+          SHA: ${{ github.sha }}
+          SECONDS_TAKEN: ${{ steps.wait.outputs.seconds }}
+          STATUS: ${{ steps.wait.outputs.status }}
+        run: |
+          mkdir -p out
+          jq -n --arg sha "$SHA" --arg status "${STATUS:-error}" \
+            --argjson seconds "${SECONDS_TAKEN:-null}" \
+            --arg measuredAt "$(date -u +%FT%TZ)" \
+            '{sha: $sha, status: $status, seconds: $seconds, measuredAt: $measuredAt}' > out/deploy-time.json
+          cat out/deploy-time.json
+          if [ -n "$SECONDS_TAKEN" ]; then
+            printf '### Merge to live: %dm %ds (%s, %s)\n' $((SECONDS_TAKEN/60)) $((SECONDS_TAKEN%60)) "${SHA:0:7}" "${STATUS}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          [ "$STATUS" = "live" ]
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-time-${{ github.sha }}
+          path: out/deploy-time.json
