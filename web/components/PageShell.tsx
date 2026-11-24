@@ -11,6 +11,7 @@ const fonts = {
 const NAV = [
   { href: "/", label: "Dashboard" },
   { href: "/profile", label: "Profile" },
+  { href: "/workouts", label: "Workouts" },
 ] as const;
 
 type PageShellProps = {
@@ -52,7 +53,7 @@ export default function PageShell({ current, children }: PageShellProps) {
             <p className="mt-2 text-[#A9A7C9]">Your AI-powered health and fitness tracker</p>
           </div>
 
-          <nav aria-label="Main" className="flex gap-1 rounded-xl bg-[#1B1A36] p-1 ring-1 ring-[#2E2B57]">
+          <nav aria-label="Main" className="flex flex-wrap gap-1 rounded-xl bg-[#1B1A36] p-1 ring-1 ring-[#2E2B57]">
             {NAV.map((item) => {
               const active = item.href === current;
               return (

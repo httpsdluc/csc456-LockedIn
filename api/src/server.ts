@@ -11,6 +11,7 @@ const app = createApp({
   // Render sets RENDER_GIT_COMMIT on every deploy; GIT_SHA wins if set by hand.
   version: (process.env.GIT_SHA ?? process.env.RENDER_GIT_COMMIT)?.slice(0, 7) ?? "dev",
   corsOrigin: process.env.CORS_ORIGIN,
+  openRouterApiKey: process.env.OPENROUTER_API_KEY,
 });
 
 app.listen(port, () => {
