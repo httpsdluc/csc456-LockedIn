@@ -93,7 +93,7 @@ describe("POST /meals", () => {
     const res = await request(buildApp().app).post("/meals").send({ name: "Bad", mealType: "lunch", calories: -5 });
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: "VALIDATION_ERROR", message: "calories must be a number >= 0" });
+    expect(res.body).toEqual({ error: "VALIDATION_ERROR", message: "calories must be a number >= 0", requestId: expect.any(String) });
   });
 
   it("returns 400 for a body that isn't valid JSON", async () => {
@@ -103,7 +103,7 @@ describe("POST /meals", () => {
       .send('{"name": "oops"');
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: "VALIDATION_ERROR", message: "request body is not valid JSON" });
+    expect(res.body).toEqual({ error: "VALIDATION_ERROR", message: "request body is not valid JSON", requestId: expect.any(String) });
   });
 
   it("returns 400 when no JSON body is sent", async () => {
@@ -137,7 +137,7 @@ describe("DELETE /meals/:id", () => {
     const res = await request(buildApp().app).delete("/meals/4");
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: "NOT_FOUND", message: "meal 4 not found" });
+    expect(res.body).toEqual({ error: "NOT_FOUND", message: "meal 4 not found", requestId: expect.any(String) });
   });
 
   it("returns 404 when deleting the same meal twice", async () => {
@@ -157,7 +157,7 @@ describe("unknown routes and server errors", () => {
   it("returns JSON 404 for a route that doesn't exist", async () => {
     const res = await request(buildApp().app).get("/nope");
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: "NOT_FOUND", message: "no route for GET /nope" });
+    expect(res.body).toEqual({ error: "NOT_FOUND", message: "no route for GET /nope", requestId: expect.any(String) });
   });
 
   it("returns 500 without leaking the error when storage throws", async () => {
@@ -165,15 +165,9 @@ describe("unknown routes and server errors", () => {
     store.listBetween = async () => {
       throw new Error("secret connection string in here");
     };
-    const original = console.error;
-    console.error = () => {};
-    try {
-      const res = await request(buildApp({ store }).app).get("/meals");
-      expect(res.status).toBe(500);
-      expect(res.body).toEqual({ error: "INTERNAL_ERROR", message: "something went wrong" });
-    } finally {
-      console.error = original;
-    }
+    const res = await request(buildApp({ store }).app).get("/meals");
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: "INTERNAL_ERROR", message: "something went wrong", requestId: expect.any(String) });
   });
 
   it("allows the web app to call it from the browser (CORS)", async () => {

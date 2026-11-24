@@ -7,6 +7,7 @@ export const TODAY = new Date("2026-10-26T18:00:00Z");
 
 export function buildApp(overrides: Partial<AppOptions> & { store?: MealStore } = {}) {
   const store = overrides.store ?? new MemoryMealStore(loadFixtureMeals());
-  const app = createApp({ version: "test123", now: () => TODAY, ...overrides, store });
+  // Silent unless a test passes its own logger.
+  const app = createApp({ version: "test123", now: () => TODAY, logger: () => {}, ...overrides, store });
   return { app, store };
 }

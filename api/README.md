@@ -63,6 +63,12 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 | `src/dates.ts` | Turns `?date=YYYY-MM-DD` into a UTC day range. |
 | `src/fixtures.ts` | Loads `meals.json` and validates it on startup. |
 | `src/profile-store.ts` | `ProfileStore` interface plus the in-memory version. |
+| `src/request-log.ts` | Request ids and the per-request log line. |
+| `src/logger.ts` | JSON line logger. |
+
+## Logs
+
+One JSON line per request (`requestId`, `method`, `path`, `status`, `durationMs`), plus one `unhandled error` line with the stack for every 500. Query strings and bodies are never logged. Every response carries `X-Request-Id`, and error bodies include it as `requestId`, so a bug report can be matched to its log line in the Render dashboard.
 
 ## Known limits (on purpose for Sprint 1)
 
