@@ -1,14 +1,17 @@
 import cors from "cors";
 import express, { type ErrorRequestHandler, type Express, type Response } from "express";
-import { parseDay } from "./dates.js";
+import { parseDay, toIsoUtc } from "./dates.js";
+import { MemoryProfileStore, type ProfileStore } from "./profile-store.js";
 import type { MealStore } from "./store.js";
-import { validateNewMeal } from "./validation.js";
+import { validateNewMeal, validateProfile } from "./validation.js";
 
 export interface AppOptions {
   store: MealStore;
+  /** Defaults to in-memory. */
+  profileStore?: ProfileStore;
   /** Short git SHA of the running build. /health reports it. */
   version?: string;
-  /** Hardcoded until user profiles exist (see CONTRACT.md). */
+  /** Used by /summary/daily when no profile has been saved (see CONTRACT.md). */
   goalCalories?: number;
   /** Allowed browser origin for the web app. Defaults to any origin. */
   corsOrigin?: string;
@@ -28,6 +31,7 @@ function roundToTenth(value: number): number {
 
 export function createApp({
   store,
+  profileStore = new MemoryProfileStore(),
   version = "dev",
   goalCalories = 2500,
   corsOrigin = "*",
@@ -75,11 +79,24 @@ export function createApp({
     res.status(204).end();
   });
 
+  app.get("/profile", async (_req, res) => {
+    const profile = await profileStore.get();
+    if (!profile) return sendError(res, 404, "NOT_FOUND", "no profile saved yet");
+    res.json(profile);
+  });
+
+  app.put("/profile", async (req, res) => {
+    const result = validateProfile(req.body);
+    if (!result.ok) return sendError(res, 400, "VALIDATION_ERROR", result.message);
+    res.json(await profileStore.save({ ...result.value, updatedAt: toIsoUtc(now()) }));
+  });
+
   app.get("/summary/daily", async (req, res) => {
     const day = parseDay(req.query.date, now());
     if (!day) return sendError(res, 400, "VALIDATION_ERROR", "date must be a real date in YYYY-MM-DD format");
 
-    const meals = await store.listBetween(day.start, day.end);
+    const [meals, profile] = await Promise.all([store.listBetween(day.start, day.end), profileStore.get()]);
+    const goal = profile?.dailyCalorieGoal ?? goalCalories;
     const totals = meals.reduce(
       (sum, meal) => ({
         calories: sum.calories + meal.calories,
@@ -96,9 +113,9 @@ export function createApp({
       proteinG: roundToTenth(totals.proteinG),
       carbsG: roundToTenth(totals.carbsG),
       fatG: roundToTenth(totals.fatG),
-      goalCalories,
+      goalCalories: goal,
       // Goes negative when the user is over their goal. The web app can show "over by X".
-      remainingCalories: goalCalories - totals.calories,
+      remainingCalories: goal - totals.calories,
       mealCount: meals.length,
     });
   });

@@ -24,6 +24,9 @@ curl "localhost:3001/meals?date=2026-10-26"
 curl "localhost:3001/summary/daily?date=2026-10-26"
 curl -X POST localhost:3001/meals -H "Content-Type: application/json" \
   -d '{"name":"Greek yogurt","mealType":"snack","calories":150,"proteinG":15}'
+curl localhost:3001/profile      # 404 until you save one
+curl -X PUT localhost:3001/profile -H "Content-Type: application/json" \
+  -d '{"goal":"cut","fitnessLevel":"intermediate","dailyCalorieGoal":2200,"workoutDaysPerWeek":4}'
 ```
 
 The three fake meals are dated 2026-10-26, so pass `?date=2026-10-26` to see them on any other day.
@@ -59,13 +62,14 @@ The coverage report prints in the terminal and in the CI log for every PR. An HT
 | `src/validation.ts` | Checks POST bodies and fills in defaults. |
 | `src/dates.ts` | Turns `?date=YYYY-MM-DD` into a UTC day range. |
 | `src/fixtures.ts` | Loads `meals.json` and validates it on startup. |
+| `src/profile-store.ts` | `ProfileStore` interface plus the in-memory version. |
 
 ## Known limits (on purpose for Sprint 1)
 
 - **Data lives in memory.** It resets on every restart. The routes only talk to the `MealStore` interface, so the Postgres version (table in CONTRACT.md) plugs in without touching them.
 - **Days are UTC.** A meal at 9pm in New York lands on the next day's list. Fix when user profiles add a timezone.
 - **One demo user, no auth.** Same as CONTRACT.md.
-- **`goalCalories` is hardcoded to 2500** until profiles exist.
+- **The profile lives in memory too.** Until it's saved, `/summary/daily` uses a goal of 2500. The `profiles` table is in CONTRACT.md for the Postgres version.
 
 ## Deploy
 
